@@ -7,6 +7,7 @@ import (
 	"github.com/DimaKropachev/cryptool/internal/crypto/algorithms"
 	"github.com/DimaKropachev/cryptool/internal/crypto/algorithms/aes"
 	"github.com/DimaKropachev/cryptool/internal/crypto/algorithms/chacha20"
+	"github.com/DimaKropachev/cryptool/internal/utils/file"
 	"github.com/DimaKropachev/cryptool/internal/utils"
 )
 
@@ -36,7 +37,7 @@ func EncryptAndSave(algorithm, inputPath, outputDirPath, outputFileName string, 
 		return err
 	}
 
-	outPath, err := utils.CreatePathEncryptedFile(inputPath, outputFileName, outputDirPath)
+	outPath, err := file.CreatePathEncryptedFile(inputPath, outputFileName, outputDirPath)
 	if err != nil {
 		return err
 	}
@@ -47,7 +48,7 @@ func EncryptAndSave(algorithm, inputPath, outputDirPath, outputFileName string, 
 	}
 	defer out.Close()
 
-	blockSize, err := utils.CalculateOptimalBlockSize(inputPath)
+	blockSize, err := file.CalculateOptimalBlockSize(inputPath)
 	if err != nil {
 		return err
 	}
@@ -63,7 +64,7 @@ func EncryptAndSave(algorithm, inputPath, outputDirPath, outputFileName string, 
 		return fmt.Errorf("error writting header from file")
 	}
 
-	content, errs, err := utils.ReadDecryptedFile(inputPath, blockSize)
+	content, errs, err := file.ReadDecryptedFile(inputPath, blockSize)
 	if err != nil {
 		return err
 	}
@@ -97,7 +98,7 @@ READ:
 }
 
 func DecryptAndSave(inputPath, outputDirPath, outputFileName string, password []byte) error {
-	outPath, err := utils.CreatePathDecryptedFile(inputPath, outputFileName, outputDirPath)
+	outPath, err := file.CreatePathDecryptedFile(inputPath, outputFileName, outputDirPath)
 	if err != nil {
 		return err
 	}
@@ -134,7 +135,7 @@ func DecryptAndSave(inputPath, outputDirPath, outputFileName string, password []
 	}
 	defer out.Close()
 
-	content, errs, err := utils.ReadEncryptedFile(in, alg.GetNonceSize(), int(header.BlockSize), alg.GetTagSize())
+	content, errs, err := file.ReadEncryptedFile(in, alg.GetNonceSize(), int(header.BlockSize), alg.GetTagSize())
 	if err != nil {
 		return err
 	}
