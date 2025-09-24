@@ -7,8 +7,8 @@ import (
 	"github.com/DimaKropachev/cryptool/internal/crypto/algorithms"
 	"github.com/DimaKropachev/cryptool/internal/crypto/algorithms/aes"
 	"github.com/DimaKropachev/cryptool/internal/crypto/algorithms/chacha20"
-	"github.com/DimaKropachev/cryptool/internal/utils/file"
 	"github.com/DimaKropachev/cryptool/internal/utils"
+	"github.com/DimaKropachev/cryptool/internal/utils/file"
 )
 
 func EncryptAndSave(algorithm, inputPath, outputDirPath, outputFileName string, password []byte, saltSize int) error {

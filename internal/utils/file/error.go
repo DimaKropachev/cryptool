@@ -17,7 +17,7 @@ var (
 	ErrSepInvalidSyntax         = errors.New("separator invalid syntax")
 	ErrEmptyDirPath          = errors.New("directory path cannot be empty")
 	ErrForbiddenCharsDirPath = errors.New("directory path cannot contain forbidden characters")
-	ErrFolderDotsDirPath     = errors.New("directory path cannot contain a folder with forbidden characters")
+	ErrFolderDotsDirPath     = errors.New("directory path cannot contain a folder with a name consisting only dots")
 
 	ErrEmptyFileName          = errors.New("file name cannot be empty")
 	ErrForbiddenCharsFileName = errors.New("file name cannot contain forbidden characters")
