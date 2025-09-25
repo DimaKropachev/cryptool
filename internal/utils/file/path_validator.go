@@ -77,10 +77,15 @@ func validateDirPath(dirPath string) error {
 		return pathError(ActionValidate, dirPath, ErrSepInvalidSyntax)
 	}
 
-	forbiddenChar := `\/:*?"<>|`
+	forbiddenChar := `:*?"<>|`
 	dirPath = strings.ReplaceAll(dirPath, "/", string(filepath.Separator))
 	folders := strings.Split(dirPath, string(filepath.Separator))
-	for _, folder := range folders {
+	for i, folder := range folders {
+		if i == 0 {
+			if folder == "." {
+				continue
+			}
+		}
 		if len(folder) == 0 {
 			continue
 		}
