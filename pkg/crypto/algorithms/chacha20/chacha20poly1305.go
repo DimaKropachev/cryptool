@@ -1,10 +1,10 @@
 package chacha20
 
-import ( 
+import (
 	"bytes"
 	"crypto/cipher"
 
-	"github.com/DimaKropachev/cryptool/internal/utils"
+	"github.com/DimaKropachev/cryptool/pkg/crypto"
 	"golang.org/x/crypto/chacha20poly1305"
 )
 
@@ -14,9 +14,7 @@ type ChaCha20Poly1305 struct {
 	TagSize   int
 }
 
-func NewChaCha20Poly1305(password []byte, keySize int, salt []byte) (*ChaCha20Poly1305, error) {
-	key := utils.GenerateKeyFromPassword(password, salt, keySize)
-
+func NewChaCha20Poly1305(key, salt []byte) (*ChaCha20Poly1305, error) {
 	aead, err := chacha20poly1305.NewX(key)
 	if err != nil {
 		return nil, err
@@ -32,7 +30,7 @@ func NewChaCha20Poly1305(password []byte, keySize int, salt []byte) (*ChaCha20Po
 func (chacha20 *ChaCha20Poly1305) Encrypt(plaintext []byte) ([]byte, error) {
 	result := bytes.NewBuffer([]byte{})
 
-	nonce := utils.GenerateNonce(chacha20.NonceSize)
+	nonce := crypto.GenerateNonce(chacha20.NonceSize)
 
 	if _, err := result.Write(nonce); err != nil {
 		return nil, err

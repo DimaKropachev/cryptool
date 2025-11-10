@@ -5,7 +5,9 @@ package cli
 
 import (
 	"fmt"
+	"os"
 
+	"github.com/DimaKropachev/cryptool/internal/app"
 	"github.com/spf13/cobra"
 )
 
@@ -21,6 +23,24 @@ This application is a tool to generate the needed files
 to quickly create a Cobra application.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		fmt.Println("benchmark called")
+
+		if len(args) == 0 {
+			fmt.Fprintln(os.Stderr, "")
+			os.Exit(0)
+		}
+		inputFilePath := args[0]
+
+		// // flag "password"
+		// password, err := cmd.Flags().GetString("password")
+		// if err != nil {
+		// 	fmt.Fprintln(os.Stderr, err)
+		// 	os.Exit(0)
+		// }
+
+		err := app.Benchmark(inputFilePath)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+		}
 	},
 }
 
@@ -36,4 +56,5 @@ func init() {
 	// Cobra supports local flags which will only run when this command
 	// is called directly, e.g.:
 	// benchmarkCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
+	benchmarkCmd.Flags().StringP("password", "p", "", "")
 }

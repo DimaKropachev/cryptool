@@ -6,16 +6,15 @@ import (
 	"strings"
 )
 
-func validateFilePath(path string) error {
+func ValidateFilePath(path string) error {
 	if path == "" {
 		return pathError(ActionValidate, path, ErrEmptyPath)
 	}
 
 	dir, file := filepath.Split(path)
-	fmt.Println(dir, file)
 
 	if dir != "" {
-		err := validateDirPath(dir)
+		err := ValidateDirPath(dir)
 		if err != nil {
 			pe, _ := err.(*PathError)
 			return pathError(ActionValidate, path, pe.Err)
@@ -24,16 +23,17 @@ func validateFilePath(path string) error {
 	}
 
 	if file != "" {
-		err := validateFileName(file)
+		err := ValidateFileName(file)
 		if err != nil {
-			return pathError(ActionValidate, path, err)
+			pe, _ := err.(*PathError)
+			return pathError(ActionValidate, path, pe.Err)
 		}
 	}
 
 	return nil
 }
 
-func validateFileName(fileName string) error {
+func ValidateFileName(fileName string) error {
 	if len(fileName) == 0 {
 		return pathError(ActionValidate, fileName, ErrEmptyFileName)
 	}
@@ -51,7 +51,8 @@ func validateFileName(fileName string) error {
 	return nil
 }
 
-func validateDirPath(dirPath string) error {
+func ValidateDirPath(dirPath string) error {
+	fmt.Printf("dir path: %s\n", dirPath)
 	if len(dirPath) == 0 {
 		return pathError(ActionValidate, dirPath, ErrEmptyDirPath)
 	}

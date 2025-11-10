@@ -6,6 +6,7 @@ package cli
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 
 	"github.com/DimaKropachev/cryptool/internal/app"
 	"github.com/spf13/cobra"
@@ -14,21 +15,20 @@ import (
 // encryptCmd represents the encrypt command
 var encryptCmd = &cobra.Command{
 	Use:   "encrypt",
-	Short: "A brief description of your command",
+	Short: "Encrypt the file using the specified path",
 	Long: `A longer description that spans multiple lines and likely contains examples
 and usage of using your command. For example:
 
 Cobra is a CLI library for Go that empowers applications.
 This application is a tool to generate the needed files
 to quickly create a Cobra application.`,
-	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("encrypt called")
 
+	Run: func(cmd *cobra.Command, args []string) {
 		if len(args) == 0 {
 			fmt.Fprintln(os.Stderr, "")
 			os.Exit(0)
 		}
-		inputFilePath := args[0]
+		inputPath := filepath.Clean(args[0])
 
 		// flag "password"
 		password, err := cmd.Flags().GetString("password")
@@ -37,26 +37,13 @@ to quickly create a Cobra application.`,
 			os.Exit(0)
 		}
 
-		// flag "salt-length"
-		saltLength, err := cmd.Flags().GetInt("salt-length")
-		if err != nil {
-			fmt.Fprintln(os.Stderr, err)
-			os.Exit(0)
-		}
-
 		// flag "output"
-		outputDirPath, err := cmd.Flags().GetString("output")
+		outputPath, err := cmd.Flags().GetString("output")
 		if err != nil {
 			fmt.Fprintln(os.Stderr, err)
 			os.Exit(0)
 		}
-
-		// flag "name"
-		outputFileName, err := cmd.Flags().GetString("name")
-		if err != nil {
-			fmt.Fprintln(os.Stderr, err)
-			os.Exit(0)
-		}
+		outputPath = filepath.Clean(outputPath)
 
 		// flag "algorithm"
 		alg, err := cmd.Flags().GetString("algorithm")
@@ -64,14 +51,12 @@ to quickly create a Cobra application.`,
 			fmt.Fprintln(os.Stderr, err)
 			os.Exit(0)
 		}
-
-		err = app.EncryptAndSave(
+		
+		err = app.Encrypt(
 			alg,
-			inputFilePath,
-			outputDirPath,
-			outputFileName,
+			inputPath,
+			outputPath,
 			[]byte(password),
-			saltLength,
 		)
 		if err != nil {
 			fmt.Fprintln(os.Stderr, err)
@@ -94,7 +79,5 @@ func init() {
 	// encryptCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 	encryptCmd.Flags().StringP("output", "o", "", "")
 	encryptCmd.Flags().StringP("password", "p", "", "")
-	encryptCmd.Flags().Int("salt-length", 16, "")
 	encryptCmd.Flags().StringP("algorithm", "a", "aes256-gcm", "")
-	encryptCmd.Flags().StringP("name","n", "", "")
 }

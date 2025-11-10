@@ -3,9 +3,9 @@ package aes
 import (
 	"bytes"
 	"crypto/aes"
-	"crypto/cipher" 
+	"crypto/cipher"
 
-	"github.com/DimaKropachev/cryptool/internal/utils"
+	"github.com/DimaKropachev/cryptool/pkg/crypto"
 )
 
 type AESGCM struct {
@@ -14,9 +14,7 @@ type AESGCM struct {
 	TagSize   int
 }
 
-func NewAESGCM(password []byte, keySize int, salt []byte) (*AESGCM, error) {
-	key := utils.GenerateKeyFromPassword(password, salt, keySize)
-
+func NewAESGCM(key, salt []byte) (*AESGCM, error) {
 	block, err := aes.NewCipher(key)
 	if err != nil {
 		return nil, err
@@ -40,7 +38,7 @@ func (aes *AESGCM) Encrypt(plaintext []byte) ([]byte, error) {
 	result := bytes.NewBuffer([]byte{})
 
 	// generate nonce
-	nonce := utils.GenerateNonce(aes.NonceSize)
+	nonce := crypto.GenerateNonce(aes.NonceSize)
 
 	if _, err := result.Write(nonce); err != nil {
 		return nil, err

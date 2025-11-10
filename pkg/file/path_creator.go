@@ -5,49 +5,30 @@ import (
 	"strings"
 )
 
-func CreatePathEncryptedFile(inputFilePath, outputFileName, outputDir string) (string, error) {
-	err := validateFilePath(inputFilePath)
-	if err != nil {
-		return "", err
-	}
-	err = validateFileName(outputFileName)
-	if err != nil {
-		return "", err
-	}
-	err = validateDirPath(outputDir)
-	if err != nil {
-		return "", err
-	}
-
+func CreateOutPath(inPath, outPath string) string {
 	var newPath string
 
-	inputDir, inputFile := filepath.Split(inputFilePath)
-
-	if outputFileName == "" {
-		outputFileName = inputFile + ".crpt"
+	outPathDir, outPathFile := filepath.Split(outPath)
+	if outPathFile == "" {
+		_, inputFile := filepath.Split(inPath)
+		newPath = outPathDir + inputFile + ".crpt"
 	} else {
-		outputFileName += ".crpt"
+		newPath = outPath
 	}
 
-	if outputDir != "" {
-		newPath = filepath.Join(outputDir, outputFileName)
-	} else {
-		newPath = filepath.Join(inputDir, outputFileName)
-	}
-
-	return newPath, nil
+	return newPath
 }
 
 func CreatePathDecryptedFile(inputFilePath, outputFileName, outputDir string) (string, error) {
-	err := validateFilePath(inputFilePath)
+	err := ValidateFilePath(inputFilePath)
 	if err != nil {
 		return "", err
 	}
-	err = validateFileName(outputFileName)
+	err = ValidateFileName(outputFileName)
 	if err != nil {
 		return "", err
 	}
-	err = validateDirPath(outputDir)
+	err = ValidateDirPath(outputDir)
 	if err != nil {
 		return "", err
 	}

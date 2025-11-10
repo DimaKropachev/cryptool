@@ -1,10 +1,14 @@
-package utils
+package crypto
 
 import (
 	"crypto/rand"
 
 	"golang.org/x/crypto/pbkdf2"
 	"golang.org/x/crypto/sha3"
+)
+
+const (
+	DefaultSaltSize = 16
 )
 
 func GenerateSalt(size int) []byte {
@@ -28,5 +32,11 @@ func GenerateKeyFromPassword(password, salt []byte, keySize int) []byte {
 		sha3.New256,
 	)
 
+	return key
+}
+
+func GenerateKey(keySize int) []byte {
+	key := make([]byte, keySize)
+	rand.Read(key)
 	return key
 }

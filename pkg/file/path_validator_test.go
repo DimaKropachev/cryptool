@@ -109,7 +109,7 @@ func TestValidateFileName(t *testing.T) {
 	for ind, item := range cases {
 		caseName := fmt.Sprintf("case %d: [path %s]", ind, item.path)
 
-		err := validateFileName(item.path)
+		err := ValidateFileName(item.path)
 		pe, ok := err.(*PathError)
 		if ok {
 			if pe.Err != item.wantErr {
@@ -211,7 +211,7 @@ func TestValidateDirPath(t *testing.T) {
 	for ind, item := range cases {
 		caseName := fmt.Sprintf("case %d: [path %s]", ind, item.path)
 
-		err := validateDirPath(item.path)
+		err := ValidateDirPath(item.path)
 		pe, ok := err.(*PathError)
 		if ok {
 			if pe.Err != item.wantErr {

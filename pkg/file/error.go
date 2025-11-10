@@ -9,6 +9,7 @@ type Action string
 
 const (
 	ActionValidate = "validate"
+	ActionScanning = "scanning"
 )
 
 var (
@@ -33,7 +34,7 @@ type PathError struct {
 }
 
 func (pe *PathError) Error() string {
-	return fmt.Sprintf("%s %s: %v", pe.Action, pe.Path, pe.Err)
+	return fmt.Sprintf("%s [%s]: %v", pe.Action, pe.Path, pe.Err)
 }
 
 func pathError(action Action, path string, err error) error {

@@ -1,13 +1,13 @@
-package utils
+package crypto
 
 import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
 	"io"
-
-	"github.com/DimaKropachev/cryptool/internal/crypto/algorithms"
 )
+
+const MagicNum = "CRPT"
 
 type Header struct {
 	MagicNum  string
@@ -20,7 +20,7 @@ type Header struct {
 
 func NewHeader(algID, blockSize, saltSize, nonceSize int, salt []byte) *Header {
 	header := &Header{
-		MagicNum:  algorithms.MagicNum,
+		MagicNum:  MagicNum,
 		AlgID:     uint16(algID),
 		BlockSize: uint64(blockSize),
 		SaltSize:  uint32(saltSize),
@@ -40,7 +40,7 @@ func DecryptHeader(r io.Reader) (*Header, error) {
 	if err != nil {
 		return nil, err
 	}
-	if algorithms.MagicNum != string(magicNum) {
+	if MagicNum != string(magicNum) {
 		return nil, fmt.Errorf("")
 	}
 	header.MagicNum = string(magicNum)
@@ -78,7 +78,7 @@ func DecryptHeader(r io.Reader) (*Header, error) {
 func EncryptHeader(header *Header) ([]byte, error) {
 	result := bytes.NewBuffer([]byte{})
 
-	if _, err := result.Write([]byte(algorithms.MagicNum)); err != nil {
+	if _, err := result.Write([]byte(MagicNum)); err != nil {
 		return nil, err
 	}
 
