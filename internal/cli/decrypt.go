@@ -26,7 +26,7 @@ to quickly create a Cobra application.`,
 			fmt.Fprintln(os.Stderr, "")
 			os.Exit(0)
 		}
-		inputFilePath := args[0]
+		inputPath := args[0]
 
 		// flag "password"
 		password, err := cmd.Flags().GetString("password")
@@ -36,23 +36,15 @@ to quickly create a Cobra application.`,
 		}
 
 		// flag "output"
-		outputDirPath, err := cmd.Flags().GetString("output")
+		outputPath, err := cmd.Flags().GetString("output")
 		if err != nil {
 			fmt.Fprintln(os.Stderr, err)
 			os.Exit(0)
 		}
 
-		// flag "name"
-		outputFileName, err := cmd.Flags().GetString("name")
-		if err != nil {
-			fmt.Fprintln(os.Stderr, err)
-			os.Exit(0)
-		}
-
-		err = app.DecryptAndSave(
-			inputFilePath,
-			outputDirPath,
-			outputFileName,
+		err = app.Decrypt(
+			inputPath,
+			outputPath,
 			[]byte(password),
 		)
 		if err != nil {
@@ -75,6 +67,5 @@ func init() {
 	// is called directly, e.g.:
 	// decryptCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 	decryptCmd.Flags().StringP("output", "o", "", "")
-	decryptCmd.Flags().StringP("name","n", "", "")
 	decryptCmd.Flags().StringP("password", "p", "", "")
 }
