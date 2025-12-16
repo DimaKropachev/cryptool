@@ -21,9 +21,10 @@ const (
 )
 
 type ShortB struct {
-	Alg     string
-	Time    string
-	MemUsed string
+	Alg            string
+	Time           string
+	MemUsed        string
+	ResultFileSize string
 }
 
 func Benchmark(inputPath string) error {
@@ -36,23 +37,42 @@ func Benchmark(inputPath string) error {
 	if err != nil {
 		return fmt.Errorf("error to opening file \"%s\": %w", inputPath, err)
 	}
+	defer in.Close()
+
+	inFileInfo, err := in.Stat()
+	if err != nil {
+		return fmt.Errorf("error get file info: %w", err)
+	}
 
 	var operation string
-
 	_, err = crypto.DecryptHeader(in)
 	if err != nil {
-		fmt.Println(err)
 		operation = operationEncrypt
 	} else {
 		operation = operationDecrypt
 	}
+
+	info := `FILE INFO
+Name: %s
+Path: %s
+Size: %s
+
+Action: %s
+
+`
+
+	fmt.Printf(info,
+		inFileInfo.Name(),
+		inputPath,
+		mem.FormatBytes(float64(inFileInfo.Size())),
+		operation,
+	)
 
 	switch operation {
 	case operationDecrypt:
 
 	case operationEncrypt:
 		algs := []string{algorithms.AlgAES128GCM, algorithms.AlgAES192GCM, algorithms.AlgAES256GCM, algorithms.AlgCHACHA20POLY1305}
-		// results := make([]ShortB, len(algs))
 		result := make([][]string, len(algs))
 
 		for i, alg := range algs {
@@ -60,6 +80,7 @@ func Benchmark(inputPath string) error {
 
 			var avgTime time.Duration
 			var avgMem float64
+			var outFileSize int64
 			for i := 1; i < defaultIterations; i++ {
 
 				var before, after runtime.MemStats
@@ -67,7 +88,10 @@ func Benchmark(inputPath string) error {
 
 				start := time.Now()
 
-				encrypt(alg, inputPath)
+				outFileSize, err = encrypt(alg, inputPath)
+				if err != nil {
+					fmt.Println(err)
+				}
 
 				totalTime := time.Since(start)
 
@@ -78,15 +102,10 @@ func Benchmark(inputPath string) error {
 			}
 			avgTime /= defaultIterations
 			avgMem /= defaultIterations
-			// results[i] = ShortB{
-			// 	Alg:     alg,
-			// 	Time:    mem.FormatTime(avgTime),
-			// 	MemUsed: mem.FormatBytes(avgMem),
-			// }
-			result[i] = []string{alg, mem.FormatTime(avgTime), mem.FormatBytes(avgMem)}
+			result[i] = []string{alg, mem.FormatTime(avgTime), mem.FormatBytes(avgMem), mem.FormatBytes(float64(outFileSize))}
 		}
 		table := table.New()
-		headlines := []string{"Algorithm", "Time", "Memory usage"}
+		headlines := []string{"Algorithm", "Time", "Memory usage", "Result Size"}
 		table.SetHeader(headlines)
 		err := table.SetContent(result)
 		if err != nil {
@@ -101,47 +120,47 @@ func Benchmark(inputPath string) error {
 	return nil
 }
 
-func encrypt(algName string, inputPath string) error {
+func encrypt(algName string, inputPath string) (int64, error) {
 	var (
 		salt = crypto.GenerateSalt(16)
 	)
 
 	in, err := os.Stat(inputPath)
 	if err != nil {
-		return fmt.Errorf("error receiving information about an input file: %w", err)
+		return 0, fmt.Errorf("error receiving information about an input file: %w", err)
 	}
 
 	alg, id, err := algorithms.CreateAlgorithmByName(algName, nil, salt)
 	if err != nil {
-		return err
+		return 0, err
 	}
 
 	out, err := os.CreateTemp("", "bench.*.crpt")
 	if err != nil {
-		return err
+		return 0, err
 	}
 	defer os.Remove(out.Name())
 	defer out.Close()
 
 	blockSize, err := CalculateOptimalBlockSize(int(in.Size()))
 	if err != nil {
-		return err
+		return 0, err
 	}
 
 	header := crypto.NewHeader(id, blockSize, len(salt), alg.GetNonceSize(), salt)
 	encHeader, err := crypto.EncryptHeader(header)
 	if err != nil {
-		return fmt.Errorf("error encrypting header: %w", err)
+		return 0, fmt.Errorf("error encrypting header: %w", err)
 
 	}
 
 	if _, err := out.Write(encHeader); err != nil {
-		return err
+		return 0, err
 	}
 
 	content, errs, err := file.ReadDecryptedFile(inputPath, blockSize)
 	if err != nil {
-		return err
+		return 0, err
 	}
 
 READ:
@@ -154,20 +173,25 @@ READ:
 
 			ciphertext, err := alg.Encrypt(plaintext)
 			if err != nil {
-				return err
+				return 0, err
 			}
 
 			if _, err = out.Write(ciphertext); err != nil {
-				return err
+				return 0, err
 			}
 
 		case err, ok := <-errs:
 			if !ok {
 				break READ
 			}
-			return fmt.Errorf("error reading file: %w", err)
+			return 0, fmt.Errorf("error reading file: %w", err)
 		}
 	}
 
-	return nil
+	outFileInfo, err := out.Stat()
+	if err != nil {
+		return 0, fmt.Errorf("error get file info: %w", err)
+	}
+
+	return outFileInfo.Size(), nil
 }

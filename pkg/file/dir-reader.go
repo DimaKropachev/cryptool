@@ -69,6 +69,7 @@ func (ds *DirectoryScanner) readDirectory(path string) error {
 		ds.Files = append(ds.Files, &models.File{
 			Name: strings.TrimPrefix(path, ds.BasePath),
 			Info: info,
+			Path: path,
 		})
 	}
 

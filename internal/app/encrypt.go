@@ -27,17 +27,33 @@ func Encrypt(algorithm, inPath, outPath string, password []byte) error {
 			return err
 		}
 		// TODO: что дклать если пользователь указал директорию
+		fmt.Println("Вы точно хотите зашифровать всю директорию? (y/n)")
+
+		var answer string
+	LOOP:
+		for {
+			fmt.Scan(&answer)
+			switch answer {
+			case "y", "Y":
+				fmt.Println("yes")
+				break LOOP
+			case "n", "N":
+				fmt.Println("no")
+				return nil
+			}
+		}
 	} else {
 		pb := progressbar.New(progressbar.PrefixEncrypt+": "+nodeInfo.Name(), nodeInfo.Size())
 
 		file := &models.File{
-			Name: nodeInfo.Name(),
-			Info: nodeInfo,
-			Path: inPath,
-			PB:   pb,
+			Name:    nodeInfo.Name(),
+			Info:    nodeInfo,
+			Path:    inPath,
+			OutPath: outPath,
+			PB:      pb,
 		}
 
-		err := encryptFile(file, outPath, algorithm, password)
+		err := encryptFile(file, algorithm, password)
 		if err != nil {
 			return err
 		}
@@ -47,7 +63,7 @@ func Encrypt(algorithm, inPath, outPath string, password []byte) error {
 	return nil
 }
 
-func encryptFile(f *models.File, outPath, algorithm string, password []byte) error {
+func encryptFile(f *models.File, algorithm string, password []byte) error {
 	salt := crypto.GenerateSalt(crypto.DefaultSaltSize)
 
 	alg, algID, err := algorithms.CreateAlgorithmByName(algorithm, password, salt)
@@ -66,11 +82,7 @@ func encryptFile(f *models.File, outPath, algorithm string, password []byte) err
 		return err
 	}
 
-	if outPath == "." {
-		outPath = f.Name + ".crpt"
-	}
-
-	outFile, err := os.OpenFile(outPath, os.O_CREATE, 0644)
+	outFile, err := os.OpenFile(f.OutPath, os.O_CREATE, 0644)
 	if err != nil {
 		return fmt.Errorf("error accessing the output file: %w", err)
 	}
@@ -117,7 +129,8 @@ READ:
 	return nil
 }
 
-func encryptDirectory(fs []*models.File, algorithm string, password []byte) error {
+// func encryptDirectory(fs []*models.File, algorithm string, password []byte) error {
+// 	pb := progressbar.New()
 
-	return nil
-}
+// 	return nil
+// }

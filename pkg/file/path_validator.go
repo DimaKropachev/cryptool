@@ -1,7 +1,6 @@
 package file
 
 import (
-	"fmt"
 	"path/filepath"
 	"strings"
 )
@@ -52,7 +51,6 @@ func ValidateFileName(fileName string) error {
 }
 
 func ValidateDirPath(dirPath string) error {
-	fmt.Printf("dir path: %s\n", dirPath)
 	if len(dirPath) == 0 {
 		return pathError(ActionValidate, dirPath, ErrEmptyDirPath)
 	}

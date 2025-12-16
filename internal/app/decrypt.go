@@ -104,6 +104,7 @@ func decryptFile(f *models.File, outPath string, password []byte) error {
 
 	outFile, err := os.OpenFile(outPath, os.O_CREATE, 0644)
 	if err != nil {
+		fmt.Println(outPath)
 		return fmt.Errorf("error accessing the output file: %w", err)
 	}
 	defer outFile.Close()

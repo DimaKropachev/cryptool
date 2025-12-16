@@ -7,8 +7,9 @@ import (
 )
 
 type File struct {
-	Name string
-	Info os.FileInfo
-	Path string
-	PB *progressbar.ProgressBar
+	Name    string
+	Info    os.FileInfo
+	Path    string
+	OutPath string
+	PB      *progressbar.ProgressBar
 }

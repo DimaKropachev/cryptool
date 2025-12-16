@@ -51,13 +51,14 @@ to quickly create a Cobra application.`,
 			fmt.Fprintln(os.Stderr, err)
 			os.Exit(0)
 		}
-		
+
 		err = app.Encrypt(
 			alg,
 			inputPath,
 			outputPath,
 			[]byte(password),
 		)
+
 		if err != nil {
 			fmt.Fprintln(os.Stderr, err)
 			os.Exit(0)
