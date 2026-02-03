@@ -2,6 +2,7 @@ package app
 
 import (
 	"fmt"
+	"log"
 	"os"
 	"path/filepath"
 
@@ -14,7 +15,6 @@ import (
 
 func Encrypt(algorithm, inPath, outPath string, password []byte) error {
 	inPath = filepath.Clean(inPath)
-	outPath = filepath.Clean(outPath)
 
 	nodeInfo, err := os.Stat(inPath)
 	if err != nil {
@@ -22,22 +22,46 @@ func Encrypt(algorithm, inPath, outPath string, password []byte) error {
 	}
 
 	if nodeInfo.IsDir() {
-		_, err := file.ReadDirectory(inPath)
+		outPath, err = file.CreateOutputDirPath(inPath, outPath)
 		if err != nil {
 			return err
 		}
-		// TODO: что дклать если пользователь указал директорию
+		if outPath[len(outPath)-1] != filepath.Separator {
+			outPath += string(filepath.Separator)
+		}
+
+		files, err := file.ReadDirectory(inPath)
+		if err != nil {
+			return err
+		}
+
+		for _, f := range files {
+			f.OutPath = file.CreateOutputFilePath(file.Encrpt, f.Path, outPath)
+
+			f.PB = progressbar.New(progressbar.PrefixEncrypt+": "+f.Info.Name(), f.Info.Size())
+
+			err := encryptFile(f, algorithm, password)
+			if err != nil {
+				log.Println(err)
+			}
+		}
+
 	} else {
+		// Создаем путь к выходнуму файлу
+		outPath = file.CreateOutputFilePath(file.Encrpt, inPath, outPath)
+
+		// Создаем прогресс бар
 		pb := progressbar.New(progressbar.PrefixEncrypt+": "+nodeInfo.Name(), nodeInfo.Size())
 
 		file := &models.File{
-			Name: nodeInfo.Name(),
-			Info: nodeInfo,
-			Path: inPath,
-			PB:   pb,
+			Name:    nodeInfo.Name(),
+			Info:    nodeInfo,
+			Path:    inPath,
+			OutPath: outPath,
+			PB:      pb,
 		}
 
-		err := encryptFile(file, outPath, algorithm, password)
+		err := encryptFile(file, algorithm, password)
 		if err != nil {
 			return err
 		}
@@ -47,7 +71,7 @@ func Encrypt(algorithm, inPath, outPath string, password []byte) error {
 	return nil
 }
 
-func encryptFile(f *models.File, outPath, algorithm string, password []byte) error {
+func encryptFile(f *models.File, algorithm string, password []byte) error {
 	salt := crypto.GenerateSalt(crypto.DefaultSaltSize)
 
 	alg, algID, err := algorithms.CreateAlgorithmByName(algorithm, password, salt)
@@ -66,11 +90,7 @@ func encryptFile(f *models.File, outPath, algorithm string, password []byte) err
 		return err
 	}
 
-	if outPath == "." {
-		outPath = f.Name + ".crpt"
-	}
-
-	outFile, err := os.OpenFile(outPath, os.O_CREATE, 0644)
+	outFile, err := os.OpenFile(f.OutPath, os.O_CREATE, 0644)
 	if err != nil {
 		return fmt.Errorf("error accessing the output file: %w", err)
 	}
@@ -114,10 +134,5 @@ READ:
 			}
 		}
 	}
-	return nil
-}
-
-func encryptDirectory(fs []*models.File, algorithm string, password []byte) error {
-
 	return nil
 }

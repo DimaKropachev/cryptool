@@ -14,134 +14,120 @@ import (
 )
 
 const (
-	operationEncrypt = "encrypt"
-	operationDecrypt = "decrypt"
-
-	defaultIterations = 10
+	defaultIterations = 20
 )
 
 type ShortB struct {
-	Alg     string
-	Time    string
-	MemUsed string
+	Alg            string
+	Time           string
+	MemUsed        string
+	ResultFileSize string
 }
 
-func Benchmark(inputPath string) error {
-	err := file.ValidateFilePath(inputPath)
+func Benchmark(inPath string) error {
+	inFileInfo, err := os.Stat(inPath)
+	if err != nil {
+		return fmt.Errorf("error get file info: %w", err)
+	}
+
+	info := `FILE INFO
+Name: %s
+Path: %s
+Size: %s
+
+`
+
+	inFileSize := inFileInfo.Size()
+
+	fmt.Printf(info,
+		inFileInfo.Name(),
+		inPath,
+		mem.FormatBytes(float64(inFileSize)),
+	)
+
+	algs := []string{algorithms.AlgAES128GCM, algorithms.AlgAES192GCM, algorithms.AlgAES256GCM, algorithms.AlgCHACHA20POLY1305}
+	result := make([][]string, len(algs))
+
+	for i, alg := range algs {
+		runtime.GC()
+
+		var avgTime time.Duration
+		var avgMem float64
+		var outFileSize int64
+		for j := 1; j < defaultIterations; j++ {
+
+			var before, after runtime.MemStats
+			runtime.ReadMemStats(&before)
+
+			start := time.Now()
+
+			outFileSize, err = encrypt(inPath, int(inFileSize), alg)
+			if err != nil {
+				fmt.Println(err)
+			}
+
+			totalTime := time.Since(start)
+
+			runtime.ReadMemStats(&after)
+
+			avgTime += totalTime
+			avgMem += float64(after.TotalAlloc - before.TotalAlloc)
+		}
+		avgTime /= defaultIterations
+		avgMem /= defaultIterations
+		result[i] = []string{alg, mem.FormatTime(avgTime), mem.FormatBytes(avgMem), mem.FormatBytes(float64(outFileSize))}
+	}
+	table := table.New()
+	headlines := []string{"Algorithm", "Time", "Memory usage", "Result Size"}
+	table.SetHeader(headlines)
+	err = table.SetContent(result)
 	if err != nil {
 		return err
 	}
-
-	in, err := os.OpenFile(inputPath, os.O_RDONLY, 0644)
+	err = table.Render()
 	if err != nil {
-		return fmt.Errorf("error to opening file \"%s\": %w", inputPath, err)
-	}
-
-	var operation string
-
-	_, err = crypto.DecryptHeader(in)
-	if err != nil {
-		fmt.Println(err)
-		operation = operationEncrypt
-	} else {
-		operation = operationDecrypt
-	}
-
-	switch operation {
-	case operationDecrypt:
-
-	case operationEncrypt:
-		algs := []string{algorithms.AlgAES128GCM, algorithms.AlgAES192GCM, algorithms.AlgAES256GCM, algorithms.AlgCHACHA20POLY1305}
-		// results := make([]ShortB, len(algs))
-		result := make([][]string, len(algs))
-
-		for i, alg := range algs {
-			runtime.GC()
-
-			var avgTime time.Duration
-			var avgMem float64
-			for i := 1; i < defaultIterations; i++ {
-
-				var before, after runtime.MemStats
-				runtime.ReadMemStats(&before)
-
-				start := time.Now()
-
-				encrypt(alg, inputPath)
-
-				totalTime := time.Since(start)
-
-				runtime.ReadMemStats(&after)
-
-				avgTime += totalTime
-				avgMem += float64(after.TotalAlloc - before.TotalAlloc)
-			}
-			avgTime /= defaultIterations
-			avgMem /= defaultIterations
-			// results[i] = ShortB{
-			// 	Alg:     alg,
-			// 	Time:    mem.FormatTime(avgTime),
-			// 	MemUsed: mem.FormatBytes(avgMem),
-			// }
-			result[i] = []string{alg, mem.FormatTime(avgTime), mem.FormatBytes(avgMem)}
-		}
-		table := table.New()
-		headlines := []string{"Algorithm", "Time", "Memory usage"}
-		table.SetHeader(headlines)
-		err := table.SetContent(result)
-		if err != nil {
-			return err
-		}
-		err = table.Render()
-		if err != nil {
-			return err
-		}
+		return err
 	}
 
 	return nil
 }
 
-func encrypt(algName string, inputPath string) error {
+func encrypt(inPath string, inSize int, algName string) (int64, error) {
 	var (
 		salt = crypto.GenerateSalt(16)
 	)
 
-	in, err := os.Stat(inputPath)
-	if err != nil {
-		return fmt.Errorf("error receiving information about an input file: %w", err)
-	}
-
 	alg, id, err := algorithms.CreateAlgorithmByName(algName, nil, salt)
 	if err != nil {
-		return err
+		return 0, err
 	}
 
 	out, err := os.CreateTemp("", "bench.*.crpt")
 	if err != nil {
-		return err
+		return 0, err
 	}
 	defer os.Remove(out.Name())
 	defer out.Close()
 
-	blockSize, err := CalculateOptimalBlockSize(int(in.Size()))
+	blockSize, err := CalculateOptimalBlockSize(inSize)
 	if err != nil {
-		return err
+		return 0, err
 	}
 
 	header := crypto.NewHeader(id, blockSize, len(salt), alg.GetNonceSize(), salt)
 	encHeader, err := crypto.EncryptHeader(header)
 	if err != nil {
-		return fmt.Errorf("error encrypting header: %w", err)
+		return 0, fmt.Errorf("error encrypting header: %w", err)
 
 	}
 
 	if _, err := out.Write(encHeader); err != nil {
-		return err
+		return 0, err
 	}
 
-	content, errs, err := file.ReadDecryptedFile(inputPath, blockSize)
+	content, errs, err := file.ReadDecryptedFile(inPath, blockSize)
 	if err != nil {
-		return err
+		return 0, err
 	}
 
 READ:
@@ -154,20 +140,25 @@ READ:
 
 			ciphertext, err := alg.Encrypt(plaintext)
 			if err != nil {
-				return err
+				return 0, err
 			}
 
 			if _, err = out.Write(ciphertext); err != nil {
-				return err
+				return 0, err
 			}
 
 		case err, ok := <-errs:
 			if !ok {
 				break READ
 			}
-			return fmt.Errorf("error reading file: %w", err)
+			return 0, fmt.Errorf("error reading file: %w", err)
 		}
 	}
 
-	return nil
+	outFileInfo, err := out.Stat()
+	if err != nil {
+		return 0, fmt.Errorf("error get file info: %w", err)
+	}
+
+	return outFileInfo.Size(), nil
 }

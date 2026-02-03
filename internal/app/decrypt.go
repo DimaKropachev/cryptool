@@ -2,6 +2,7 @@ package app
 
 import (
 	"fmt"
+	"log"
 	"os"
 	"path/filepath"
 
@@ -14,7 +15,6 @@ import (
 
 func Decrypt(inPath, outPath string, password []byte) error {
 	inPath = filepath.Clean(inPath)
-	outPath = filepath.Clean(outPath)
 
 	nodeInfo, err := os.Stat(inPath)
 	if err != nil {
@@ -22,108 +22,84 @@ func Decrypt(inPath, outPath string, password []byte) error {
 	}
 
 	if nodeInfo.IsDir() {
-
-	} else {
-		pb := progressbar.New(progressbar.PrefixDecrypt+": "+nodeInfo.Name(), nodeInfo.Size())
-
-		file := &models.File{
-			Name: nodeInfo.Name(),
-			Info: nodeInfo,
-			Path: inPath,
-			PB:   pb,
-		}
-
-		err := decryptFile(file, outPath, password)
+		outPath, err = file.CreateOutputDirPath(inPath, outPath)
 		if err != nil {
 			return err
 		}
-	}
+		if outPath[len(outPath)-1] != filepath.Separator {
+			outPath += string(filepath.Separator)
+		}
 
-	in, err := os.OpenFile(inPath, os.O_RDONLY, 0644)
-	if err != nil {
-		return err
-	}
-	defer in.Close()
+		files, err := file.ReadDirectory(inPath)
+		if err != nil {
+			return err
+		}
 
-	header, err := crypto.DecryptHeader(in)
-	if err != nil {
-		// error decrypting header
-		return err
-	}
+		for _, f := range files {
+			f.OutPath = file.CreateOutputFilePath(file.Encrpt, f.Path, outPath)
+			f.PB = progressbar.New(progressbar.PrefixDecrypt+": "+f.Info.Name(), f.Info.Size())
 
-	alg, err := algorithms.CreateAlgorithmByID(int(header.AlgID), password, header.Salt)
-	if err != nil {
-		return err
-	}
-
-	out, err := os.OpenFile(outPath, os.O_CREATE, 0644)
-	if err != nil {
-		return err
-	}
-	defer out.Close()
-
-	content, errs, err := file.ReadEncryptedFile(in, alg.GetNonceSize(), int(header.BlockSize), alg.GetTagSize())
-	if err != nil {
-		return err
-	}
-
-READ:
-	for {
-		select {
-		case ciphertext, ok := <-content:
-			if !ok {
-				break READ
-			}
-
-			plaintext, err := alg.Decrypt(ciphertext.Buf, ciphertext.Nonce)
+			err := decryptFile(f, password)
 			if err != nil {
-				return err
+				log.Println(err)
 			}
+		}
 
-			if _, err := out.Write(plaintext); err != nil {
-				return err
-			}
+	} else {
+		outPath = file.CreateOutputFilePath(file.Decrpt, inPath, outPath)
 
-		case err, ok := <-errs:
-			if !ok {
-				break READ
-			}
-			return fmt.Errorf("error reading file: %w", err)
+		pb := progressbar.New(progressbar.PrefixDecrypt+": "+nodeInfo.Name(), nodeInfo.Size())
+
+		file := &models.File{
+			Name:    nodeInfo.Name(),
+			Info:    nodeInfo,
+			Path:    inPath,
+			PB:      pb,
+			OutPath: outPath,
+		}
+
+		err := decryptFile(file, password)
+		if err != nil {
+			return err
 		}
 	}
 
 	return nil
 }
 
-func decryptFile(f *models.File, outPath string, password []byte) error {
+func decryptFile(f *models.File, password []byte) error {
 	inFile, err := os.OpenFile(f.Path, os.O_RDONLY, 0644)
 	if err != nil {
 		return fmt.Errorf("error opening input file: %w", err)
 	}
 	defer inFile.Close()
 
-	outFile, err := os.OpenFile(outPath, os.O_CREATE, 0644)
+	outFile, err := os.OpenFile(f.OutPath, os.O_CREATE, 0644)
 	if err != nil {
 		return fmt.Errorf("error accessing the output file: %w", err)
 	}
 	defer outFile.Close()
 
-	header, err := crypto.DecryptHeader(inFile)
+	f.PB.Start()
+	header,n, err := crypto.DecryptHeader(inFile)
 	if err != nil {
+		f.PB.Finish()
 		return fmt.Errorf("error reading header: %w", err)
 	}
+	f.PB.Add(n)
 
 	alg, err := algorithms.CreateAlgorithmByID(int(header.AlgID), password, header.Salt)
 	if err != nil {
+		f.PB.Finish()
 		return fmt.Errorf("error creating algorithm: %w", err)
 	}
 
 	content, errs, err := file.ReadEncryptedFile(inFile, alg.GetNonceSize(), int(header.BlockSize), alg.GetTagSize())
 	if err != nil {
+		f.PB.Finish()
 		return fmt.Errorf("error reading input file: %w", err)
 	}
 
-	f.PB.Start()
 READ:
 	for {
 		select {
@@ -139,12 +115,12 @@ READ:
 				return err
 			}
 
+			f.PB.Add(len(ciphertext.Nonce)+len(ciphertext.Buf))
+
 			if _, err := outFile.Write(plaintext); err != nil {
 				f.PB.Finish()
 				return err
 			}
-
-			f.PB.Add(int(header.BlockSize))
 		case err := <-errs:
 			if err != nil {
 				f.PB.Finish()

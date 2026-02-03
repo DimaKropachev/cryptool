@@ -15,20 +15,17 @@ import (
 // encryptCmd represents the encrypt command
 var encryptCmd = &cobra.Command{
 	Use:   "encrypt",
-	Short: "Encrypt the file using the specified path",
-	Long: `A longer description that spans multiple lines and likely contains examples
-and usage of using your command. For example:
-
-Cobra is a CLI library for Go that empowers applications.
-This application is a tool to generate the needed files
-to quickly create a Cobra application.`,
+	Short: "Encrypt files and directories using the selected encryption algorithm.",
+	Long: `The encrypt command is used to encrypt individual files or entire directories.
+It supports multiple encryption algorithms and modes of operation, allows specifying a password or key, and provides options to tune security and performance.
+When encrypting directories, the original directory structure is preserved. The command can either overwrite the source data or create an encrypted copy in a specified output location.`,
 
 	Run: func(cmd *cobra.Command, args []string) {
 		if len(args) == 0 {
 			fmt.Fprintln(os.Stderr, "")
 			os.Exit(0)
 		}
-		inputPath := filepath.Clean(args[0])
+		inFilePath := filepath.Clean(args[0])
 
 		// flag "password"
 		password, err := cmd.Flags().GetString("password")
@@ -51,13 +48,14 @@ to quickly create a Cobra application.`,
 			fmt.Fprintln(os.Stderr, err)
 			os.Exit(0)
 		}
-		
+
 		err = app.Encrypt(
 			alg,
-			inputPath,
+			inFilePath,
 			outputPath,
 			[]byte(password),
 		)
+
 		if err != nil {
 			fmt.Fprintln(os.Stderr, err)
 			os.Exit(0)

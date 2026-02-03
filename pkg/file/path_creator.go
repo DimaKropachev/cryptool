@@ -1,55 +1,61 @@
 package file
 
 import (
+	"fmt"
+	"os"
 	"path/filepath"
-	"strings"
 )
 
-func CreateOutPath(inPath, outPath string) string {
-	var newPath string
+const (
+	Decrpt = "Decrypt"
+	Encrpt = "Encypt"
+)
+
+// CreateOutputFilePath создает путь к выходноу файлу.
+// Если outPath = "", то функция вернет путь к входному файлу только с подписью ".crpt".
+// Если outPath указывает на директорию, то вернется значение этой директории в которой будет файл с именем входного только с подписью ".crpt".
+// Если outPath уже содержит путь к файлу, то CreateOutputFile вернет его без изменений.
+func CreateOutputFilePath(action string, inPath, outPath string) string {
+	// expansion - расширение
+	var expansion string
+	switch action {
+	case Decrpt:
+		expansion = ".dec"
+	case Encrpt:
+		expansion = ".enc"
+	}
+
+	if outPath == "" {
+		return inPath + expansion
+	}
 
 	outPathDir, outPathFile := filepath.Split(outPath)
-	if outPathFile == "" {
+	switch outPathFile {
+	case "":
 		_, inputFile := filepath.Split(inPath)
-		newPath = outPathDir + inputFile + ".crpt"
+		return outPathDir + string(filepath.Separator) + inputFile + expansion
+	case ".":
+		_, inputFile := filepath.Split(inPath)
+		return "." + string(filepath.Separator) + inputFile + expansion
+	}
+	return outPath
+}
+
+// CreateOuputDirPath создает путь к выходной директории.
+// Если outPath = "", то вернется значение пути к входной директории с подписью (crpt).
+// Если outPath содержит путь к конкретному файлу, то будет возвращен только значение директории из этого пути.
+func CreateOutputDirPath(inPath, outPath string) (string, error) {
+	var newPath string
+
+	if outPath == "" {
+		newPath = inPath + "(crpt)"
 	} else {
 		newPath = outPath
 	}
 
-	return newPath
-}
-
-func CreatePathDecryptedFile(inputFilePath, outputFileName, outputDir string) (string, error) {
-	err := ValidateFilePath(inputFilePath)
+	err := os.MkdirAll(newPath, 0644)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("error creating output directory: %w", err)
 	}
-	err = ValidateFileName(outputFileName)
-	if err != nil {
-		return "", err
-	}
-	err = ValidateDirPath(outputDir)
-	if err != nil {
-		return "", err
-	}
-
-	var newPath string
-
-	if !strings.HasSuffix(inputFilePath, ".crpt") {
-		return "", pathError(ActionValidate, inputFilePath, ErrInvalidFileExtension)
-	}
-
-	inputDir, inputFile := filepath.Split(inputFilePath)
-
-	if outputFileName == "" {
-		outputFileName = strings.TrimSuffix(inputFile, ".crpt")
-	}
-
-	if outputDir != "" {
-		newPath = filepath.Join(outputDir, outputFileName)
-	} else {
-		newPath = filepath.Join(inputDir, outputFileName)
-	}
-
 	return newPath, nil
 }

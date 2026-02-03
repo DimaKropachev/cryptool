@@ -14,13 +14,8 @@ import (
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
 	Use:   "cryptool",
-	Short: "Cryptool is a powerful CLI utility for encrypting and decrypting files.",
+	Short: "Cryptool is a CLI utility for encrypting and decrypting files.",
 	Long:  `Cryptool is a CLI utility that allows you to encrypt and decrypt text files.This application helps you choose the optimal encryption algorithm and provides a user-friendly and intuitive interface for use.`,
-	// Uncomment the following line if your bare application
-	// has an action associated with it:
-	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("Hello, this is my first CLI application with Cobra")
-	},
 }
 
 // Execute adds all child commands to the root command and sets flags appropriately.
