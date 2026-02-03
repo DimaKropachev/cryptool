@@ -31,48 +31,50 @@ func NewHeader(algID, blockSize, saltSize, nonceSize int, salt []byte) *Header {
 	return header
 }
 
-func DecryptHeader(r io.Reader) (*Header, error) {
+func DecryptHeader(r io.Reader) (*Header, int,error) {
+	hSize := 22
 	header := Header{}
 
 	// Decrypt MagicNum
 	magicNum := make([]byte, 4)
 	_, err := r.Read(magicNum)
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 	if MagicNum != string(magicNum) {
-		return nil, fmt.Errorf("")
+		return nil, 0, fmt.Errorf("")
 	}
 	header.MagicNum = string(magicNum)
 
 	// Decrypt algID
 	if err := binary.Read(r, binary.LittleEndian, &header.AlgID); err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 
 	// Decrypt BlockSize
 	if err := binary.Read(r, binary.LittleEndian, &header.BlockSize); err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 
 	// Drcrypt SaltSize
 	if err := binary.Read(r, binary.LittleEndian, &header.SaltSize); err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 
 	// Decrypt Salt
 	salt := make([]byte, header.SaltSize)
 	if _, err := r.Read(salt); err != nil {
-		return nil, err
+		return nil, 0,err
 	}
 	header.Salt = salt
+	hSize += int(header.SaltSize)
 
 	// Decrypt NonceSize
 	if err := binary.Read(r, binary.LittleEndian, &header.NonceSize); err != nil {
-		return nil, err
+		return nil, 0,err
 	}
 
-	return &header, nil
+	return &header, hSize, nil
 }
 
 func EncryptHeader(header *Header) ([]byte, error) {

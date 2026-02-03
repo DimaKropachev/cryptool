@@ -14,10 +14,7 @@ import (
 )
 
 const (
-	operationEncrypt = "encrypt"
-	operationDecrypt = "decrypt"
-
-	defaultIterations = 10
+	defaultIterations = 20
 )
 
 type ShortB struct {
@@ -27,29 +24,10 @@ type ShortB struct {
 	ResultFileSize string
 }
 
-func Benchmark(inputPath string) error {
-	err := file.ValidateFilePath(inputPath)
-	if err != nil {
-		return err
-	}
-
-	in, err := os.OpenFile(inputPath, os.O_RDONLY, 0644)
-	if err != nil {
-		return fmt.Errorf("error to opening file \"%s\": %w", inputPath, err)
-	}
-	defer in.Close()
-
-	inFileInfo, err := in.Stat()
+func Benchmark(inPath string) error {
+	inFileInfo, err := os.Stat(inPath)
 	if err != nil {
 		return fmt.Errorf("error get file info: %w", err)
-	}
-
-	var operation string
-	_, err = crypto.DecryptHeader(in)
-	if err != nil {
-		operation = operationEncrypt
-	} else {
-		operation = operationDecrypt
 	}
 
 	info := `FILE INFO
@@ -57,78 +35,67 @@ Name: %s
 Path: %s
 Size: %s
 
-Action: %s
-
 `
+
+	inFileSize := inFileInfo.Size()
 
 	fmt.Printf(info,
 		inFileInfo.Name(),
-		inputPath,
-		mem.FormatBytes(float64(inFileInfo.Size())),
-		operation,
+		inPath,
+		mem.FormatBytes(float64(inFileSize)),
 	)
 
-	switch operation {
-	case operationDecrypt:
+	algs := []string{algorithms.AlgAES128GCM, algorithms.AlgAES192GCM, algorithms.AlgAES256GCM, algorithms.AlgCHACHA20POLY1305}
+	result := make([][]string, len(algs))
 
-	case operationEncrypt:
-		algs := []string{algorithms.AlgAES128GCM, algorithms.AlgAES192GCM, algorithms.AlgAES256GCM, algorithms.AlgCHACHA20POLY1305}
-		result := make([][]string, len(algs))
+	for i, alg := range algs {
+		runtime.GC()
 
-		for i, alg := range algs {
-			runtime.GC()
+		var avgTime time.Duration
+		var avgMem float64
+		var outFileSize int64
+		for j := 1; j < defaultIterations; j++ {
 
-			var avgTime time.Duration
-			var avgMem float64
-			var outFileSize int64
-			for i := 1; i < defaultIterations; i++ {
+			var before, after runtime.MemStats
+			runtime.ReadMemStats(&before)
 
-				var before, after runtime.MemStats
-				runtime.ReadMemStats(&before)
+			start := time.Now()
 
-				start := time.Now()
-
-				outFileSize, err = encrypt(alg, inputPath)
-				if err != nil {
-					fmt.Println(err)
-				}
-
-				totalTime := time.Since(start)
-
-				runtime.ReadMemStats(&after)
-
-				avgTime += totalTime
-				avgMem += float64(after.TotalAlloc - before.TotalAlloc)
+			outFileSize, err = encrypt(inPath, int(inFileSize), alg)
+			if err != nil {
+				fmt.Println(err)
 			}
-			avgTime /= defaultIterations
-			avgMem /= defaultIterations
-			result[i] = []string{alg, mem.FormatTime(avgTime), mem.FormatBytes(avgMem), mem.FormatBytes(float64(outFileSize))}
+
+			totalTime := time.Since(start)
+
+			runtime.ReadMemStats(&after)
+
+			avgTime += totalTime
+			avgMem += float64(after.TotalAlloc - before.TotalAlloc)
 		}
-		table := table.New()
-		headlines := []string{"Algorithm", "Time", "Memory usage", "Result Size"}
-		table.SetHeader(headlines)
-		err := table.SetContent(result)
-		if err != nil {
-			return err
-		}
-		err = table.Render()
-		if err != nil {
-			return err
-		}
+		avgTime /= defaultIterations
+		avgMem /= defaultIterations
+		result[i] = []string{alg, mem.FormatTime(avgTime), mem.FormatBytes(avgMem), mem.FormatBytes(float64(outFileSize))}
+	}
+	table := table.New()
+	headlines := []string{"Algorithm", "Time", "Memory usage", "Result Size"}
+	table.SetHeader(headlines)
+	err = table.SetContent(result)
+	if err != nil {
+		return err
+	}
+	err = table.Render()
+	if err != nil {
+		return err
 	}
 
 	return nil
 }
 
-func encrypt(algName string, inputPath string) (int64, error) {
+func encrypt(inPath string, inSize int, algName string) (int64, error) {
 	var (
 		salt = crypto.GenerateSalt(16)
 	)
-
-	in, err := os.Stat(inputPath)
-	if err != nil {
-		return 0, fmt.Errorf("error receiving information about an input file: %w", err)
-	}
 
 	alg, id, err := algorithms.CreateAlgorithmByName(algName, nil, salt)
 	if err != nil {
@@ -142,7 +109,7 @@ func encrypt(algName string, inputPath string) (int64, error) {
 	defer os.Remove(out.Name())
 	defer out.Close()
 
-	blockSize, err := CalculateOptimalBlockSize(int(in.Size()))
+	blockSize, err := CalculateOptimalBlockSize(inSize)
 	if err != nil {
 		return 0, err
 	}
@@ -158,7 +125,7 @@ func encrypt(algName string, inputPath string) (int64, error) {
 		return 0, err
 	}
 
-	content, errs, err := file.ReadDecryptedFile(inputPath, blockSize)
+	content, errs, err := file.ReadDecryptedFile(inPath, blockSize)
 	if err != nil {
 		return 0, err
 	}

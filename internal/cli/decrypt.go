@@ -14,19 +14,16 @@ import (
 // decryptCmd represents the decrypt command
 var decryptCmd = &cobra.Command{
 	Use:   "decrypt",
-	Short: "A brief description of your command",
-	Long: `A longer description that spans multiple lines and likely contains examples
-and usage of using your command. For example:
-
-Cobra is a CLI library for Go that empowers applications.
-This application is a tool to generate the needed files
-to quickly create a Cobra application.`,
+	Short: "Decrypt previously encrypted files and directories.",
+	Long: `The decrypt command decrypts files and directories that were previously encrypted using this utility.
+It supports the same algorithms and parameters that were used during encryption and requires the correct password or key.
+When decrypting directories, the original file structure is restored. The command allows selecting an output directory and controlling behavior in case of file conflicts.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		if len(args) == 0 {
 			fmt.Fprintln(os.Stderr, "")
 			os.Exit(0)
 		}
-		inputPath := args[0]
+		inFilePath := args[0]
 
 		// flag "password"
 		password, err := cmd.Flags().GetString("password")
@@ -43,7 +40,7 @@ to quickly create a Cobra application.`,
 		}
 
 		err = app.Decrypt(
-			inputPath,
+			inFilePath,
 			outputPath,
 			[]byte(password),
 		)
