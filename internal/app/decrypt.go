@@ -44,7 +44,7 @@ func Decrypt(inPath, outPath string, password []byte) error {
 				log.Println(err)
 			}
 		}
-
+		fmt.Fprintf(os.Stdout, "Directory %s successfully decrypted", nodeInfo.Name())
 	} else {
 		outPath = file.CreateOutputFilePath(file.Decrpt, inPath, outPath)
 
@@ -62,6 +62,7 @@ func Decrypt(inPath, outPath string, password []byte) error {
 		if err != nil {
 			return err
 		}
+		fmt.Fprintf(os.Stdout, "File %s successfully decrypted", nodeInfo.Name())
 	}
 
 	return nil

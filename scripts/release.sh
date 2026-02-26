@@ -1,41 +1,48 @@
+#!/bin/bash
+set -e
+
 # Настройки
-REPO="DimaKropachev/cryptool"    
-PROJECT_NAME="cryptool"             
-VERSION="v1.0.0-beta"                
-BUILD_DIR="./build"           
+REPO="DimaKropachev/cryptool"
+PROJECT_NAME="cryptool"
+VERSION="v1.0.0"
+BUILD_DIR="./build/$VERSION"
 
 # Создаем директорию для сборки
-mkdir -p "$BUILD_DIR/$VERSION"
+mkdir -p "$BUILD_DIR"
 
-# Определяем платформы и архитектуры
+# Платформы
 PLATFORMS=("windows")
-ARCHS=("amd64")                         # Поддерживаем 64-битные платформы
+ARCHS=("amd64")
 
-# Собираем бинарники
+# Сборка
 for OS in "${PLATFORMS[@]}"; do
   for ARCH in "${ARCHS[@]}"; do
     BIN_NAME="${PROJECT_NAME}-${OS}-${ARCH}-${VERSION}"
+
     if [ "$OS" == "windows" ]; then
       BIN_NAME="${BIN_NAME}.exe"
     fi
 
     echo "Собираем для $OS/$ARCH..."
-    GOOS=$OS GOARCH=$ARCH go build -o "$BUILD_DIR/$VERSION/$BIN_NAME" ./cmd/cryptool
+    GOOS=$OS GOARCH=$ARCH go build -o "$BUILD_DIR/$BIN_NAME" ./cmd/cryptool
   done
 done
 
-# Проверка существования релиза (опционально)
-if gh release view "$VERSION" > /dev/null 2>&1; then
-  echo "Релиз $VERSION уже существует, добавляем файлы..."
+# Проверка существования релиза
+if gh release view "$VERSION" --repo "$REPO" > /dev/null 2>&1; then
+  echo "Релиз $VERSION уже существует"
 else
   echo "Создаю новый релиз $VERSION..."
-  gh release create "$VERSION" --title "Release $VERSION" --notes "Автоматический релиз."
+  gh release create "$VERSION" \
+    --repo "$REPO" \
+    --title "Release $VERSION" \
+    --notes "Автоматический релиз."
 fi
 
-# Загружаем файлы в релиз
-for FILE in "$BUILD_DIR"/*; do
-  echo "Загружаем $FILE..."
-  gh release upload "$REPO" "$FILE" --clobber
-done
+# Загрузка файлов
+echo "Загружаю бинарники..."
+gh release upload "$VERSION" "$BUILD_DIR"/* \
+  --repo "$REPO" \
+  --clobber
 
 echo "Готово! Релиз $VERSION опубликован."

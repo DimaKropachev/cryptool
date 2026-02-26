@@ -49,27 +49,30 @@ Size: %s
 	result := make([][]string, len(algs))
 
 	for i, alg := range algs {
-		runtime.GC()
+		runtime.GC() // Вызывается сборщик мусора
 
 		var avgTime time.Duration
 		var avgMem float64
 		var outFileSize int64
 		for j := 1; j < defaultIterations; j++ {
 
-			var before, after runtime.MemStats
-			runtime.ReadMemStats(&before)
+			// Переменные для хранения кол-ва используемой памяти
+			var before, after runtime.MemStats 
+			runtime.ReadMemStats(&before) // Кол-во используемой памяти до шифрования
 
-			start := time.Now()
+			start := time.Now() // Время старта
 
+			// Процесс шифрования
 			outFileSize, err = encrypt(inPath, int(inFileSize), alg)
 			if err != nil {
 				fmt.Println(err)
 			}
 
-			totalTime := time.Since(start)
+			totalTime := time.Since(start) // Итоговое время
 
-			runtime.ReadMemStats(&after)
+			runtime.ReadMemStats(&after) // Кол-во используемой памяти после шифрования
 
+			// Рассчет среднего времени шифрования и количества используемой памяти
 			avgTime += totalTime
 			avgMem += float64(after.TotalAlloc - before.TotalAlloc)
 		}

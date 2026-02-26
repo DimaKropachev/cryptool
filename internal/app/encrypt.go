@@ -45,7 +45,7 @@ func Encrypt(algorithm, inPath, outPath string, password []byte) error {
 				log.Println(err)
 			}
 		}
-
+		fmt.Fprintf(os.Stdout, "Directory %s successfully encrypted", nodeInfo.Name())
 	} else {
 		// Создаем путь к выходнуму файлу
 		outPath = file.CreateOutputFilePath(file.Encrpt, inPath, outPath)
@@ -65,9 +65,10 @@ func Encrypt(algorithm, inPath, outPath string, password []byte) error {
 		if err != nil {
 			return err
 		}
+
+		fmt.Fprintf(os.Stdout, "File %s successfully encrypted", nodeInfo.Name())
 	}
 
-	fmt.Fprintf(os.Stdout, "File %s successfully encrypted", nodeInfo.Name())
 	return nil
 }
 
